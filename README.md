@@ -1,2 +1,2 @@
 # Project
-Traffic Violation DEtection System
+Traffic Violation Detection System
