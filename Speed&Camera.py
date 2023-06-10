@@ -2,9 +2,6 @@ import RPi.GPIO as GPIO
 import time
 import picamera
 import os
-# from picamera import PiCamera
-# import subprocess
-
 
 # Set up GPIO pins for the ultrasonic sensor
 GPIO.setmode(GPIO.BCM)
@@ -22,7 +19,7 @@ GPIO.setup(ECHO_PIN2, GPIO.IN)
 
 CAR_PASSED = False
 
-START_TIME =  0
+START_TIME = 0
 END_TIME = 0
 
 # distance between sensors in cm
@@ -48,66 +45,67 @@ def measure_distance(TRIG_PIN, ECHO_PIN):
     
     while GPIO.input(ECHO_PIN) == GPIO.HIGH:
         pulse_end = time.time()
+    
     # Calculate the distance based on the duration of the pulse
     pulse_duration = pulse_end - pulse_start
     distance = pulse_duration * 17150
     
     return distance
-    
-    
+
+
 def car_passed(TRIG_PIN, ECHO_PIN):
     if measure_distance(TRIG_PIN, ECHO_PIN) <= 7:
-        print("car passed")
+        print("Car passed")
         return True
-    
-    
+
+
 def get_speed():
-    global START_TIME, DISTANCE
-    if car_passed(TRIG_PIN1, ECHO_PIN1):
-        START_TIME = time.time()
-        CAR_PASSED = True
-    if car_passed(TRIG_PIN2, ECHO_PIN2):
-        END_TIME = time.time()
-        CAR_PASSED = False
-        return DISTANCE / (END_TIME - START_TIME)
-        
+    global START_TIME, END_TIME, CAR_PASSED
+    if car_passed(TRIG_PIN1, ECHO_PIN1) or car_passed(TRIG_PIN2, ECHO_PIN2):
+        if not CAR_PASSED:
+            START_TIME = time.time()
+            CAR_PASSED = True
+        else:
+            END_TIME = time.time()
+            CAR_PASSED = False
+            return DISTANCE / (END_TIME - START_TIME)
+
+
 def passed_speed(speed):
     if speed > 5:
         return True
 
+
 # Main program loop
 while True:
-    
+
     GPIO.setup(TRIG_PIN1, GPIO.OUT)
     GPIO.setup(ECHO_PIN1, GPIO.IN)
-    
+
     GPIO.setup(TRIG_PIN2, GPIO.OUT)
     GPIO.setup(ECHO_PIN2, GPIO.IN)
 
     speed = get_speed()
     if speed:
-        print(f"Speed of car: {round(speed, 2)} cm/s \n")
+        print(f"Speed of car: {round(speed, 2)} cm/s\n")
         if passed_speed(speed):
             print("Ha!")
-            
+
             # Set the camera resolution
             camera.resolution = (640, 480)
             obj = time.strftime("%y%m%d%H%M%S", time.gmtime(time.time()))
+            
+            # Rotate the captured image 180 degrees
+            camera.rotation = 180
+
             # Capture the photo and save it to a file
-            camera.capture(obj +'.jpg')
+            camera.capture('/home/flo/Speed_violation/' + obj + '.jpg')
 
-
-     # Capture images
-           # for i in range(7):
-            #    os.system("raspistill -o /home/pi/Pictures/image{}.jpg".format(i))
-             #   time.sleep(0.5)
-              
     else:
         print(speed)
+        
     # Wait for a short period before measuring the distance again
     time.sleep(1)
-               
 
 # Clean up GPIO resources
 GPIO.cleanup()
-
